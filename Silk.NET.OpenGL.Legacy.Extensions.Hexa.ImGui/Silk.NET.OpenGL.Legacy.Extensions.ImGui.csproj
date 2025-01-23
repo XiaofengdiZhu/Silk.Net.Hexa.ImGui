@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net9.0</TargetFrameworks>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>preview</LangVersion>
+        <RootNamespace>Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui</RootNamespace>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <DefineConstants>$(DefineConstants);LEGACY</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DefineConstants>$(DefineConstants);LEGACY</DefineConstants>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="..\Silk.NET.OpenGL.Extensions.Hexa.ImGui\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Silk.NET.Input.Extensions" Version="2.22.0"/>
+        <PackageReference Include="Silk.NET.Input.Common" Version="2.22.0"/>
+        <PackageReference Include="Silk.NET.OpenGL.Legacy" Version="2.22.0"/>
+        <PackageReference Include="Silk.NET.Windowing.Common" Version="2.22.0"/>
+        <PackageReference Include="Hexa.NET.ImGui" Version="2.2.4"/>
+    </ItemGroup>
+
+    <Import Project="..\build\props\common.props" />
+</Project>
