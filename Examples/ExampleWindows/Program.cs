@@ -5,12 +5,13 @@
 
 using System.Drawing;
 using Silk.NET.Windowing;
+using Hexa.NET.ImGui;
 using Silk.NET.Input;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.Hexa.ImGui;
 using Hexa.NET.ImNodes;
 
-namespace Example
+namespace ExampleWindows
 {
     class Program
     {
@@ -30,7 +31,9 @@ namespace Example
                 controller = new ImGuiController(
                     gl = window.CreateOpenGL(), // load OpenGL
                     window, // pass in our window
-                    inputContext = window.CreateInput() // create an input context
+                    inputContext = window.CreateInput(), // create an input context
+                    null,
+                    () => ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable
                 );
 
                 // Initialize ImNodes
@@ -59,12 +62,13 @@ namespace Example
 
                 // This is where you'll do all of your ImGUi rendering
                 // Here, we're just showing the ImGui built-in demo window.
-                Hexa.NET.ImGui.ImGui.ShowDemoWindow();
+                ImGui.DockSpaceOverViewport();
+                ImGui.ShowDemoWindow();
 
                 // Render the node editor
                 ImNodes.BeginNodeEditor();
                 ImNodes.BeginNode(0);
-                Hexa.NET.ImGui.ImGui.Text("Hello, world!");
+                ImGui.Text("Hello, world!");
                 ImNodes.EndNode();
                 ImNodes.EndNodeEditor();
 

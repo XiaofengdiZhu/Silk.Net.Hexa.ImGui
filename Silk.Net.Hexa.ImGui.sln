@@ -6,7 +6,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silk.NET.OpenGLES.Extension
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silk.NET.OpenGL.Legacy.Extensions.ImGui", "Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui\Silk.NET.OpenGL.Legacy.Extensions.ImGui.csproj", "{26E9F641-9E68-49F4-8839-D735735C7612}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example", "Examples\Example\Example.csproj", "{359F53A4-FC44-46DE-A377-D8B0A3F165C5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleWindows", "Examples\ExampleWindows\ExampleWindows.csproj", "{359F53A4-FC44-46DE-A377-D8B0A3F165C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

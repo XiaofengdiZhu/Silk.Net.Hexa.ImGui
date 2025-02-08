@@ -20,7 +20,7 @@
         <PackageReference Include="Silk.NET.Input.Common" Version="2.22.0"/>
         <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0"/>
         <PackageReference Include="Silk.NET.Windowing.Common" Version="2.22.0"/>
-        <PackageReference Include="Hexa.NET.ImGui" Version="2.2.4"/>
+        <PackageReference Include="Hexa.NET.ImGui" Version="2.2.6" />
     </ItemGroup>
 
     <Import Project="..\build\props\common.props" />

@@ -1,6 +1,6 @@
 .idea/
 bin/
-build/
+build/output_packages/
 obj/
 /packages/
 riderModule.iml

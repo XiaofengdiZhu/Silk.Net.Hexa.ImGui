@@ -1,0 +1,131 @@
+<!--suppress CheckTagEmptyBody -->
+<Project InitialTargets="SilkAddIcon;SilkGenerateNuGetReadme;SilkAddDateTime;SilkCreatePublicApi">
+    <!-- Presets for metapackages and native packages -->
+    <PropertyGroup Condition="'$(SilkMetapackage)' == 'true' or '$(SilkNativePackage)' == 'true'">
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <SilkSourceLinkExempt>true</SilkSourceLinkExempt>
+        <SilkPublicApiExempt>true</SilkPublicApiExempt>
+    </PropertyGroup>
+    <!-- Core properties -->
+    <PropertyGroup>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <LangVersion>13.0</LangVersion>
+        <Authors>.NET Foundation and Contributors</Authors>
+        <PackageReleaseNotes>
+        </PackageReleaseNotes>
+        <PackageTags Condition="'$(PackageTags)' == ''">OpenGL;OpenGLES;GLES;Vulkan;DirectX;GLFW;SDL;Source;Generator;C#;F#;.NET;DotNet;Mono;Game;Graphics;Silk;Silk.NET;Slim.NET;GPU;Sharp;Visualization;Visual;Windows;macOS;Linux;Android;Bindings;OSX;Wrapper;Native;ImGui;UI;GUI;Hexa;HexaGen</PackageTags>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageOutputPath>$(MSBuildThisFileDirectory)/../output_packages</PackageOutputPath>
+        <RepositoryUrl>https://github.com/XiaofengdiZhu/Silk.Net.Hexa.ImGui.git</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <VersionPrefix>1.0.0.0</VersionPrefix>
+        <VersionSuffix Condition="'$(VersionSuffix)' == ''"></VersionSuffix>
+        <Description Condition="'$(Description)' == ''">
+            This is a bridge between Silk.Net and Hexa.NET.ImGui. After reference this package, your Silk.Net projects will be able to use Hexa.NET.ImGuizmo, Hexa.NET.ImNodes Hexa.NET.ImPlot and other packages for Hexa.NET.ImGui.
+            这是一个连接 Silk.Net 和 Hexa.NET.ImGui 的桥接。当你在你的 Silk.Net 项目中引用了此包后，你将能够使用 Hexa.NET.ImGuizmo、Hexa.NET.ImNodes、Hexa.NET.ImPlot 等原本为Hexa.NET.ImGui准备的包。
+        </Description>
+        <CheckEolWorkloads>false</CheckEolWorkloads>
+    </PropertyGroup>
+    <PropertyGroup Condition="$(TargetFramework.StartsWith('net9'))">
+        <IsTrimmable>true</IsTrimmable>
+        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+        <EnableAotAnalyzer>true</EnableAotAnalyzer>
+        <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+        <TrimMode>full</TrimMode>
+    </PropertyGroup>
+    <!-- Date/time based versioning (mainly used by natives) -->
+    <Target Name="SilkAddDateTime" Condition="'$(SilkGitDirForVersion)' != '' and Exists('$(SilkGitDirForVersion)/.git')">
+        <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+            <SilkGitDateTimeFormat>%25%25cI</SilkGitDateTimeFormat>
+        </PropertyGroup>
+        <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+            <SilkGitDateTimeFormat>%25cI</SilkGitDateTimeFormat>
+        </PropertyGroup>
+        <Exec ConsoleToMSBuild="True"
+              Command="git show -s &quot;--format=$(SilkGitDateTimeFormat)&quot;"
+              WorkingDirectory="$(SilkGitDirForVersion)">
+            <Output TaskParameter="ConsoleOutput" PropertyName="_SilkGitIdt" />
+        </Exec>
+        <PropertyGroup>
+            <PackageVersion>$([System.DateTime]::Parse($(_SilkGitIdt)).ToUniversalTime().ToString(yyyy.MM.dd))</PackageVersion>
+        </PropertyGroup>
+    </Target>
+    <!-- SourceLink -->
+    <PropertyGroup Condition="'$(SilkSourceLinkExempt)' == ''">
+        <DebugType>portable</DebugType>
+        <EmbedAllSources>true</EmbedAllSources>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(SilkSourceLinkExempt)' == ''">
+        <PackageReference Include="DotNet.ReproducibleBuilds" Version="1.2.25" PrivateAssets="All"/>
+        <PackageReference Include="DotNet.ReproducibleBuilds.Isolated" Version="1.2.25" PrivateAssets="All"/>
+    </ItemGroup>
+    <!-- Nuget Icon - done as a target so it doesn't appear in the IDE -->
+    <Target Name="SilkAddIcon" Condition="'$(SilkIconExempt)' == ''">
+    </Target>
+    <!-- NuGet README -->
+    <Target Name="SilkGenerateNuGetReadme" Condition="'$(SilkReadmeExempt)' == ''">
+        <PropertyGroup>
+            <SilkReadme>$([System.IO.File]::ReadAllText("$(MSBuildThisFileDirectory)../../README.md"))</SilkReadme>
+            <SilkReadme>$([System.String]::Copy($(SilkReadme))
+                .Replace('&lt;!-- Begin exclude from NuGet readme. --&gt;','&lt;!--')
+                .Replace('&lt;!-- End exclude from NuGet readme. --&gt;','--&gt;')
+                .Replace('&lt;!-- Begin include in NuGet readme.','')
+                .Replace('End include in NuGet readme. --&gt;','')
+                .Replace('&lt;h1 align=&quot;center&quot;&gt;', '# ')
+                .Replace('&lt;h2 align=&quot;center&quot;&gt;', '# ')
+                .Replace('&lt;/h1&gt;', '').Replace('&lt;/h2&gt;', '')
+                .Replace('&lt;br /&gt;', '%0a%0a').Replace('&lt;br/&gt;', '%0a%0a')
+                .Replace('&lt;div&gt;', '').Replace('&lt;/div&gt;', '')
+                .Replace('&lt;a&gt;', '').Replace('&lt;/a&gt;', ''))
+            </SilkReadme>
+            <SilkReadmePath>$(IntermediateOutputPath)$(TargetFramework)/README.md</SilkReadmePath>
+        </PropertyGroup>
+        <PropertyGroup Condition="'$(SilkDescription)' != ''">
+            <Description>$(SilkDescription) $(Description)</Description>
+            <SilkExtendedDescription>$(SilkDescription) $(SilkExtendedDescription)%0a%0a</SilkExtendedDescription>
+            <SilkReadme>$([System.String]::Copy($(SilkReadme))
+                .Replace('&lt;!-- Package description inserted here automatically. --&gt;',
+                '# About This Package%0a%0a$(SilkExtendedDescription)'))
+            </SilkReadme>
+        </PropertyGroup>
+        <ItemGroup>
+            <SilkReadmeLines Include="$(SilkReadme)" />
+            <SilkReadmeGenerated Include="$(SilkReadmePath)" />
+        </ItemGroup>
+        <WriteLinesToFile File="@(SilkReadmeGenerated)"
+                          Lines="@(SilkReadmeLines)"
+                          Overwrite="true"
+                          Encoding="UTF-8" />
+        <PropertyGroup>
+            <PackageReadmeFile>README.md</PackageReadmeFile>
+        </PropertyGroup>
+        <ItemGroup>
+            <None Include="$(SilkReadmePath)" Pack="true" PackagePath="\" />
+        </ItemGroup>
+    </Target>
+    <!-- Public API Analyzer -->
+    <ItemGroup Condition="'$(SilkPublicApiExempt)' != 'true'">
+        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" PrivateAssets="All" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(SilkPublicApiExempt)' != 'true' and '$(TargetFramework)' != ''">
+        <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt" />
+        <AdditionalFiles Include="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt" />
+    </ItemGroup>
+    <Target Name="SilkCreatePublicApi" Condition="'$(SilkPublicApiExempt)' != 'true' and '$(TargetFramework)' != ''">
+        <ItemGroup>
+            <SilkNewPublicAPILines Include="#nullable enable" />
+        </ItemGroup>
+        <MakeDir Directories="PublicAPI" Condition="!Exists('PublicAPI')" />
+        <MakeDir Directories="PublicAPI/$(TargetFramework)" Condition="!Exists('PublicAPI/$(TargetFramework)')" />
+        <WriteLinesToFile File="PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt"
+                          Lines="@(SilkNewPublicAPILines)"
+                          Condition="!Exists('PublicAPI/$(TargetFramework)/PublicAPI.Shipped.txt')" />
+        <WriteLinesToFile File="PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt"
+                          Lines="@(SilkNewPublicAPILines)"
+                          Condition="!Exists('PublicAPI/$(TargetFramework)/PublicAPI.Unshipped.txt')" />
+    </Target>
+</Project>
