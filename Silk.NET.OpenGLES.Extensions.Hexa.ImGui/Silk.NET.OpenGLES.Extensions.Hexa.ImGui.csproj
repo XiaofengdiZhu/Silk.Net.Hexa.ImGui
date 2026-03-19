@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>preview</LangVersion>
         <RootNamespace>Silk.NET.OpenGLES..Extensions.Hexa.ImGui</RootNamespace>
@@ -20,11 +20,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Silk.NET.Input.Extensions" Version="2.22.0"/>
-        <PackageReference Include="Silk.NET.Input.Common" Version="2.22.0"/>
-        <PackageReference Include="Silk.NET.OpenGLES" Version="2.22.0"/>
-        <PackageReference Include="Silk.NET.Windowing.Common" Version="2.22.0"/>
-        <PackageReference Include="Hexa.NET.ImGui" Version="2.2.6" />
+        <PackageReference Include="Silk.NET.Input.Extensions" Version="2.23.0"/>
+        <PackageReference Include="Silk.NET.Input.Common" Version="2.23.0"/>
+        <PackageReference Include="Silk.NET.OpenGLES" Version="2.23.0"/>
+        <PackageReference Include="Silk.NET.Windowing.Common" Version="2.23.0"/>
+        <PackageReference Include="Hexa.NET.ImGui" Version="2.2.10-prerelease" />
     </ItemGroup>
 
     <Import Project="..\build\props\common.props" />

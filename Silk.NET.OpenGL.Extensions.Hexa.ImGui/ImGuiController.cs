@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Hexa.NET.ImGui;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
@@ -45,7 +46,7 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
         private uint _elementsHandle;
         private uint _vertexArrayObject;
 
-        private Texture _fontTexture;
+        readonly Dictionary<ImTextureID, TextureInfo> _textures = [];
         private Shader _shader;
 
         private int _windowWidth;
@@ -93,7 +94,7 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
 
             onConfigureIO?.Invoke();
 
-            io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
+            io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset |  ImGuiBackendFlags.RendererHasTextures;
 
             CreateDeviceResources();
 
@@ -514,6 +515,11 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
             bool lastEnablePrimitiveRestart = _gl.IsEnabled(GLEnum.PrimitiveRestart);
 #endif
 
+            for (int i = 0; i < drawDataPtr.Textures.Size; i++)
+            {
+                UpdateTexture(drawDataPtr.Textures[i]);
+            }
+
             SetupRenderState(drawDataPtr, framebufferWidth, framebufferHeight);
 
             // Will project scissor/clipping rectangles into framebuffer space
@@ -555,7 +561,7 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
                             _gl.CheckGlError("Scissor");
 
                             // Bind texture, Draw
-                            _gl.BindTexture(GLEnum.Texture2D, (uint) cmdPtr.TextureId.Handle);
+                            _gl.BindTexture(GLEnum.Texture2D, (uint) cmdPtr.GetTexID());
                             _gl.CheckGlError("Texture");
 
                             _gl.DrawElementsBaseVertex(GLEnum.Triangles, cmdPtr.ElemCount, GLEnum.UnsignedShort, (void*) (cmdPtr.IdxOffset * sizeof(ushort)), (int) cmdPtr.VtxOffset);
@@ -749,8 +755,6 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
             _vboHandle = _gl.GenBuffer();
             _elementsHandle = _gl.GenBuffer();
 
-            RecreateFontDeviceTexture();
-
             // Restore modified GL state
             _gl.BindTexture(GLEnum.Texture2D, (uint) lastTexture);
             _gl.BindBuffer(GLEnum.ArrayBuffer, (uint) lastArrayBuffer);
@@ -760,33 +764,105 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
             _gl.CheckGlError("End of ImGui setup");
         }
 
-        /// <summary>
-        /// Creates the texture used to render text.
-        /// </summary>
-        private unsafe void RecreateFontDeviceTexture()
+        public void UpdateTexture(ImTextureDataPtr textureData)
         {
-            // Build texture atlas
-            var io = global::Hexa.NET.ImGui.ImGui.GetIO();
-            byte* pixels = null;
-            int width = 0;
-            int height = 0;
-            int bytesPerPixel = 0;
-            io.Fonts.GetTexDataAsRGBA32(ref pixels, ref width, ref height, ref bytesPerPixel);   // Load as RGBA 32-bit (75% of the memory is wasted, but default font is so small) because it is more likely to be compatible with user's existing shaders. If your ImTextureId represent a higher-level concept than just a GL texture id, consider calling GetTexDataAsAlpha8() instead to save on GPU memory.
+            switch (textureData.Status)
+            {
+                case ImTextureStatus.WantCreate:
+                    CreateTexture(textureData);
+                    break;
 
+                case ImTextureStatus.WantUpdates:
+                    UpdateTextureData(textureData);
+                    break;
 
-            // Upload texture to graphics system
-            _gl.GetInteger(GLEnum.TextureBinding2D, out int lastTexture);
+                case ImTextureStatus.WantDestroy:
+                    DestroyTexture(textureData);
+                    break;
 
-            _fontTexture = new Texture(_gl, width, height, new IntPtr(pixels));
-            _fontTexture.Bind();
-            _fontTexture.SetMagFilter(TextureMagFilter.Linear);
-            _fontTexture.SetMinFilter(TextureMinFilter.Linear);
+                case ImTextureStatus.Ok:
+                    // Nothing to do
+                    break;
+            }
+        }
 
-            // Store our identifier
-            io.Fonts.SetTexID(new(_fontTexture.GlTexture));
-
-            // Restore state
+        public unsafe void CreateTexture(ImTextureDataPtr textureData)
+        {
+            _gl.GetInteger(GetPName.TextureBinding2D, out int lastTexture);
+            bool srgb = textureData.Format == ImTextureFormat.Rgba32;
+            Texture texture = new (_gl, textureData.Width, textureData.Height, 0, false, srgb);
+            //Texture texture = null;
+            if (textureData.Pixels != null)
+            {
+                int pixelCount = textureData.Width * textureData.Height;
+                int bytesPerPixel = srgb ? 4 : 1;
+                int dataSize = pixelCount * bytesPerPixel;
+                byte[] managedData = new byte[dataSize];
+                Marshal.Copy(new IntPtr(textureData.Pixels), managedData, 0, dataSize);
+                fixed (byte* ptr = managedData) {
+                    texture.SetData(new IntPtr(ptr));
+                }
+                texture.SetMagFilter(TextureMagFilter.Linear);
+                texture.SetMinFilter(TextureMinFilter.Linear);
+            }
+            ImTextureID texId = new(texture.GlTexture);
+            textureData.SetTexID(texId);
+            _textures[texId] = new TextureInfo(texture, true);
             _gl.BindTexture(GLEnum.Texture2D, (uint) lastTexture);
+            textureData.SetStatus(ImTextureStatus.Ok);
+        }
+
+        public unsafe void UpdateTextureData(ImTextureDataPtr textureData)
+        {
+            ImTextureID oldTexId = textureData.GetTexID();
+            if (!_textures.TryGetValue(oldTexId, out TextureInfo textureInfo))
+            {
+                return;
+            }
+            Texture texture = textureInfo.Texture;
+            _gl.GetInteger(GetPName.TextureBinding2D, out int lastTexture);
+            bool srgb = textureData.Format == ImTextureFormat.Rgba32;
+            if (texture.Width != textureData.Width
+                || texture.Height != textureData.Height
+                || texture.InternalFormat != (srgb ? SizedInternalFormat.Srgb8Alpha8 : SizedInternalFormat.Rgba8)) {
+                texture.Dispose();
+                texture = new (_gl, textureData.Width, textureData.Height, 0, false, srgb);
+                texture.Bind();
+                texture.SetMagFilter(TextureMagFilter.Linear);
+                texture.SetMinFilter(TextureMinFilter.Linear);
+                textureInfo.Texture = texture;
+                _textures.Remove(oldTexId);
+                ImTextureID newTexId = new(texture.GlTexture);
+                textureData.SetTexID(newTexId);
+                _textures[newTexId] = textureInfo;
+            }
+            if (textureData.Pixels != null)
+            {
+                int pixelCount = textureData.Width * textureData.Height;
+                int bytesPerPixel = srgb ? 4 : 1;
+                int dataSize = pixelCount * bytesPerPixel;
+                byte[] managedData = new byte[dataSize];
+                Marshal.Copy(new IntPtr(textureData.Pixels), managedData, 0, dataSize);
+                fixed (byte* ptr = managedData)
+                {
+                    texture.SetData(new IntPtr(ptr));
+                }
+            }
+            _gl.BindTexture(GLEnum.Texture2D, (uint) lastTexture);
+            textureData.SetStatus(ImTextureStatus.Ok);
+        }
+
+        public void DestroyTexture(ImTextureDataPtr textureData)
+        {
+            ImTextureID texId = textureData.GetTexID();
+            if (_textures.TryGetValue(texId, out TextureInfo textureInfo))
+            {
+                if (textureInfo.IsManaged)
+                {
+                    textureInfo.Texture?.Dispose();
+                }
+                _textures.Remove(texId);
+            }
         }
 
         /// <summary>
@@ -801,7 +877,15 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
             _gl.DeleteBuffer(_elementsHandle);
             _gl.DeleteVertexArray(_vertexArrayObject);
 
-            _fontTexture.Dispose();
+            var platformIo = global::Hexa.NET.ImGui.ImGui.GetPlatformIO();
+            for (int i = 0; i < platformIo.Textures.Size; i++)
+            {
+                uint tex = (uint)platformIo.Textures[i].TexID.Handle;
+                if (tex != 0)
+                {
+                    _gl.DeleteTexture(tex);
+                }
+            }
             _shader.Dispose();
 
             global::Hexa.NET.ImGui.ImGui.DestroyContext(Context);

@@ -40,7 +40,7 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
         public readonly uint MipmapLevels;
         public readonly SizedInternalFormat InternalFormat;
 
-        public unsafe Texture(GL gl, int width, int height, IntPtr data, bool generateMipmaps = false, bool srgb = false)
+        public unsafe Texture(GL gl, int width, int height, IntPtr data = 0, bool generateMipmaps = false, bool srgb = false)
         {
             _gl = gl;
             MaxAniso ??= gl.GetFloat(MaxTextureMaxAnisotropy);
@@ -59,9 +59,12 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
 #endif
 
             _gl.TexStorage2D(GLEnum.Texture2D, MipmapLevels, InternalFormat, Width, Height);
-            _gl.TexSubImage2D(GLEnum.Texture2D, 0, 0, 0, Width, Height, pxFormat, PixelType.UnsignedByte, (void*) data);
+            if (data != 0)
+            {
+                _gl.TexSubImage2D(GLEnum.Texture2D, 0, 0, 0, Width, Height, pxFormat, PixelType.UnsignedByte, (void*) data);
+            }
 
-            if (generateMipmaps)
+            if (generateMipmaps && data != 0)
 #if GLES
                 _gl.GenerateMipmap(GLEnum.Texture2D);
 #elif GL
@@ -71,6 +74,17 @@ namespace Silk.NET.OpenGL.Legacy.Extensions.Hexa.ImGui
             SetWrap(TextureCoordinate.T, TextureWrapMode.Repeat);
 
             _gl.TexParameterI(GLEnum.Texture2D, TextureParameterName.TextureMaxLevel, MipmapLevels - 1);
+        }
+
+        public unsafe void SetData(IntPtr data)
+        {
+            Bind();
+#if GLES || LEGACY
+            PixelFormat pxFormat = PixelFormat.Rgba;
+#elif GL
+            PixelFormat pxFormat = PixelFormat.Bgra;
+#endif
+            _gl.TexSubImage2D(GLEnum.Texture2D, 0, 0, 0, Width, Height, pxFormat, PixelType.UnsignedByte, (void*) data);
         }
 
         public void Bind()
